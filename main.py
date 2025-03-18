@@ -17,6 +17,8 @@ def main():
     # number of input attributes from the data, and the last layer has to match the number of output classes
     # The initial settings are not even close to the optimal network architecture, try increasing the number of layers
     # and neurons and see what happens.
+
+    # np_array.shape returns number of rows
     net = Network([train_data.shape[0], 100, 100, 10], optimizer="sgd")
     net.train(train_data, train_class, val_data, val_class, 20, 64, 0.01)
     net.eval_network(test_data, test_class)

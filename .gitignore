@@ -1,3 +1,5 @@
 .DS_Store
 data
 ./.venv
+uv.lock
+__pycache__

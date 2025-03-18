@@ -1,4 +1,4 @@
-import pandas as pd
+# import pandas as pd
 import numpy as np
 import pickle
 
@@ -17,7 +17,7 @@ class Network:
         self.biases = [np.zeros((x, 1)) for x in sizes[1:]]
         self.optimizer = optimizer
         if self.optimizer == "adam":
-            # Implement the buffers necessary for the Adam optimizer.
+            # TODO: Implement the buffers necessary for the Adam optimizer.
             pass
 
     def train(
@@ -53,7 +53,7 @@ class Network:
 
             for mini_batch in mini_batches:
                 output, Zs, As = self.forward_pass(mini_batch[0])
-                gw, gb = net.backward_pass(output, mini_batch[1], Zs, As)
+                gw, gb = self.backward_pass(output, mini_batch[1], Zs, As)
 
                 self.update_network(gw, gb, eta_current)
 
@@ -108,10 +108,17 @@ class Network:
         # input - numpy array of dimensions [n0 x m], where m is the number of examples in the mini batch and
         # n0 is the number of input attributes
         ########## Implement the forward pass
-        pass
+        # TODO: Check if this is correct
+        # this is not correct since this function does not return the required three values
+        a = input
+        for b, w in zip(self.biases, self.weights):
+            a = sigmoid(np.dot(w, a) + b)
+        return a, None, None
 
     def backward_pass(self, output, target, Zs, activations):
         ########## Implement the backward pass
+        # TODO: Implement this thing
+        return None, None
         pass
 
 
@@ -150,11 +157,11 @@ def unpickle(file):
 def load_data_cifar(train_file, test_file):
     train_dict = unpickle(train_file)
     test_dict = unpickle(test_file)
-    train_data = np.array(train_dict["data"]) / 255.0
+    train_data = np.array(train_dict["data"]) / 255.0  # normalize the data
     train_class = np.array(train_dict["labels"])
     train_class_one_hot = np.zeros((train_data.shape[0], 10))
     train_class_one_hot[np.arange(train_class.shape[0]), train_class] = 1.0
-    test_data = np.array(test_dict["data"]) / 255.0
+    test_data = np.array(test_dict["data"]) / 255.0  # normalize the data
     test_class = np.array(test_dict["labels"])
     test_class_one_hot = np.zeros((test_class.shape[0], 10))
     test_class_one_hot[np.arange(test_class.shape[0]), test_class] = 1.0
