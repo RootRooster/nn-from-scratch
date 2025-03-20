@@ -110,9 +110,11 @@ class Network:
         print("Classification accuracy: " + str(tp / n))
 
     def update_network(self, gw, gb, eta):
-        # gw - weight gradients - list with elements of the same shape as elements in self.weights
-        # gb - bias gradients - list with elements of the same shape as elements in self.biases
-        # eta - learning rate
+        """
+        gw - weight gradients - list with elements of the same shape as elements in self.weights
+        gb - bias gradients - list with elements of the same shape as elements in self.biases
+        eta - learning rate
+        """
         if self.optimizer == "sgd":
             for i in range(len(self.weights)):
                 self.weights[i] -= eta * gw[i]
@@ -159,9 +161,9 @@ class Network:
         nabla_w = [np.zeros(w.shape) for w in self.weights]
 
         # TODO: Wheck what this cost derivative is and if this equation is correct
-        delta = self.cost_derivitive(output, target) * softmax_dLdZ(output, target)
+        delta = softmax_dLdZ(output, target)
         nabla_b[-1] = delta
-        nabla_w[-1] = np.dot(delta, activations[-2].transpose())
+        nabla_w[-1] = np.dot(delta, activations[-1].transpose())
 
         # TODO: Figure out what is the meaning behind this
         for i in range(2, self.num_layers):
@@ -169,11 +171,14 @@ class Network:
             sp = sigmoid_prime(z)
             delta = np.dot(self.weights[-i + 1].transpose(), delta) * sp
             nabla_b[-i] = delta
-            nabla_w[-i] = np.dot(delta, activations[-i - 1].transpose())
-        return (nabla_b, nabla_w)
+            nabla_w[-i] = np.dot(delta, activations[-i].transpose())
+        # TODO: Not sure is this is correct
+        nabla_b = [np.mean(matrix, axis=1, keepdims=True) for matrix in nabla_b]
+        # the shape should be 100 1
+        return nabla_w, nabla_b
 
-    def cost_derivitive(self, output_activations, y):
-        return output_activations - y
+    # def cost_derivitive(self, output_activations, y):
+    #     return output_activations - y
 
 
 def softmax(Z):
