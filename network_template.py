@@ -2,12 +2,20 @@
 import numpy as np
 import pickle
 
+LOGGING = True
+
 
 class Network:
-    def __init__(self, sizes, optimizer="sgd"):
+    def __init__(self, sizes, optimizer="sgd", l2_lambda=0.0, beta1=0.9, beta2=0.99):
         """
         Takes in an array of `sizes` which is an array of numbers. Each represent the number of neurons on each layer.
-        Second parameter is the optimizer that tells what
+
+        Args:
+            sizes (list): List of integers representing number of neurons in each layer
+            optimizer (str): Optimization algorithm to use ("sgd" or "adam")
+            l2_lambda (float): L2 regularization parameter (default: 0.0)
+            beta1 (float): Adam beta1 parameter
+            beta2 (float): Adam beta2 parameter
 
         Weights are initized as such that the row means n-1 th layer. Therefore if we want to which weights
         the first neuron of n-1 layer connects to we just look at the row 1. Aka first neuron.
@@ -28,9 +36,23 @@ class Network:
         self.optimizer = optimizer
         self.num_layers = len(sizes)
         self.sizes = sizes
+        self.l2_lambda = l2_lambda  # L2 regularization parameter
         if self.optimizer == "adam":
-            # TODO: Implement the buffers necessary for the Adam optimizer.
-            pass
+            # Initialize Adam parameters
+            self.beta1 = beta1  # Exponential decay rate for first moment
+            self.beta2 = beta2  # Exponential decay rate for second moment
+            self.epsilon = 1e-8  # Small constant to prevent division by zero
+
+            # Initialize first moment (momentum) for weights and biases
+            self.m_w = [np.zeros_like(w) for w in self.weights]
+            self.m_b = [np.zeros_like(b) for b in self.biases]
+
+            # Initialize second moment (RMSprop) for weights and biases
+            self.v_w = [np.zeros_like(w) for w in self.weights]
+            self.v_b = [np.zeros_like(b) for b in self.biases]
+
+            # Initialize timestep
+            self.t = 0
 
     def train(
         self,
@@ -41,6 +63,7 @@ class Network:
         epochs,
         mini_batch_size,
         eta,
+        decay_rate=0.0,  # k in the formula nt = n * e^(-kt)
     ):
         """
         training data - numpy array of dimensions [n0 x m], where m is the number of examples in the data and
@@ -48,14 +71,20 @@ class Network:
         training_class - numpy array of dimensions [c x m], where c is the number of classes
         epochs - number of passes over the dataset
         mini_batch_size - number of examples the network uses to compute the gradient estimation
+        eta - initial learning rate
+        decay_rate - exponential decay rate for learning rate (default: 0.0, no decay)
         """
-
-        iteration_index = 0
-        eta_current = eta
-
         n = training_data.shape[1]
         for j in range(epochs):
-            print("Epoch" + str(j))
+            # Calculate decayed learning rate for this epoch
+            # nt = n * e^(-kt) where:
+            # n = initial learning rate (eta)
+            # k = decay rate
+            # t = current epoch
+            eta_current = eta * np.exp(-decay_rate * j)
+
+            if LOGGING:
+                print(f"Epoch {j}, Learning Rate: {eta_current:.6f}")
             loss_avg = 0.0
             mini_batches = [
                 {
@@ -77,22 +106,28 @@ class Network:
 
                 self.update_network(gw, gb, eta_current)
 
-                # Implement the learning rate schedule for Task 5
-                eta_current = eta
-                iteration_index += 1
-
-                loss = cross_entropy(mini_batch["training_class"], output)
+                loss = cross_entropy(
+                    mini_batch["training_class"],
+                    output,
+                    weights=self.weights if self.l2_lambda > 0 else None,
+                    l2_lambda=self.l2_lambda,
+                )
                 loss_avg += loss
 
-            print("Epoch {} complete".format(j))
-            print("Loss:" + str(loss_avg / len(mini_batches)))
+            if LOGGING:
+                print("Epoch {} complete".format(j))
+                print("Loss:" + str(loss_avg / len(mini_batches)))
             if j % 10 == 0:
                 self.eval_network(val_data, val_class)
 
     def eval_network(self, validation_data, validation_class):
-        # validation data - numpy array of dimensions [n0 x m], where m is the number of examples in the data and
-        # n0 is the number of input attributes
-        # validation_class - numpy array of dimensions [c x m], where c is the number of classes
+        """
+        validation data - numpy array of dimensions [n0 x m], where m is the number of examples in the data and
+        n0 is the number of input attributes
+        validation_class - numpy array of dimensions [c x m], where c is the number of classes
+
+        returns (tuple) (float) validation_loss (float) classification_accuracy
+        """
         n = validation_data.shape[1]
         loss_avg = 0.0
         tp = 0.0
@@ -100,28 +135,62 @@ class Network:
             example = np.expand_dims(validation_data[:, i], -1)
             example_class = np.expand_dims(validation_class[:, i], -1)
             example_class_num = np.argmax(validation_class[:, i], axis=0)
-            output, Zs, activations = self.forward_pass(example)
+            output, _, _ = self.forward_pass(example)
             output_num = np.argmax(output, axis=0)[0]
             tp += int(example_class_num == output_num)
 
-            loss = cross_entropy(example_class, output)
+            loss = cross_entropy(
+                example_class,
+                output,
+                weights=self.weights if self.l2_lambda > 0 else None,
+                l2_lambda=self.l2_lambda,
+            )
             loss_avg += loss
-        print("Validation Loss:" + str(loss_avg / n))
-        print("Classification accuracy: " + str(tp / n))
+        valtidation_loss = loss_avg / n
+        classification_accuracy = tp / n
+        if LOGGING:
+            print("Validation Loss:" + str(valtidation_loss))
+            print("Classification accuracy: " + str(classification_accuracy))
+        return valtidation_loss, classification_accuracy
 
     def update_network(self, gw, gb, eta):
         """
-        gw - weight gradients - list with elements of the same shape as elements in self.weights
-        gb - bias gradients - list with elements of the same shape as elements in self.biases
-        eta - learning rate
+        Update network parameters using the specified optimizer.
+
+        Args:
+            gw (list): Weight gradients - list with elements of the same shape as elements in self.weights
+            gb (list): Bias gradients - list with elements of the same shape as elements in self.biases
+            eta (float): Learning rate
         """
         if self.optimizer == "sgd":
             for i in range(len(self.weights)):
                 self.weights[i] -= eta * gw[i]
                 self.biases[i] -= eta * gb[i]
         elif self.optimizer == "adam":
-            #  TODO: Implement the update function for Adam:
-            pass
+            self.t += 1  # Increment timestep
+
+            for i in range(len(self.weights)):
+                # Update biased first moment estimate (momentum)
+                self.m_w[i] = self.beta1 * self.m_w[i] + (1 - self.beta1) * gw[i]
+                self.m_b[i] = self.beta1 * self.m_b[i] + (1 - self.beta1) * gb[i]
+
+                # Update biased second raw moment estimate (RMSprop)
+                self.v_w[i] = self.beta2 * self.v_w[i] + (1 - self.beta2) * np.square(
+                    gw[i]
+                )
+                self.v_b[i] = self.beta2 * self.v_b[i] + (1 - self.beta2) * np.square(
+                    gb[i]
+                )
+
+                # Compute bias-corrected first and second moment estimates
+                m_w_hat = self.m_w[i]  # / (1 - np.power(self.beta1, self.t))
+                m_b_hat = self.m_b[i]  # / (1 - np.power(self.beta1, self.t))
+                v_w_hat = self.v_w[i]  # / (1 - np.power(self.beta2, self.t))
+                v_b_hat = self.v_b[i]  # / (1 - np.power(self.beta2, self.t))
+
+                # Apply Adam updates
+                self.weights[i] -= eta * m_w_hat / (np.sqrt(v_w_hat) + self.epsilon)
+                self.biases[i] -= eta * m_b_hat / (np.sqrt(v_b_hat) + self.epsilon)
         else:
             raise ValueError("Unknown optimizer:" + self.optimizer)
 
@@ -160,25 +229,29 @@ class Network:
         nabla_b = [np.zeros(b.shape) for b in self.biases]
         nabla_w = [np.zeros(w.shape) for w in self.weights]
 
-        # TODO: Wheck what this cost derivative is and if this equation is correct
+        # Compute output layer error (delta)
         delta = softmax_dLdZ(output, target)
         nabla_b[-1] = delta
         nabla_w[-1] = np.dot(delta, activations[-1].transpose())
 
-        # TODO: Figure out what is the meaning behind this
+        # Backpropagate the error
         for i in range(2, self.num_layers):
             z = Zs[-i]
             sp = sigmoid_prime(z)
             delta = np.dot(self.weights[-i + 1].transpose(), delta) * sp
             nabla_b[-i] = delta
             nabla_w[-i] = np.dot(delta, activations[-i].transpose())
-        # TODO: Not sure is this is correct
-        nabla_b = [np.mean(matrix, axis=1, keepdims=True) for matrix in nabla_b]
-        # the shape should be 100 1
-        return nabla_w, nabla_b
 
-    # def cost_derivitive(self, output_activations, y):
-    #     return output_activations - y
+        # Average the gradients over the batch
+        nabla_b = [np.mean(matrix, axis=1, keepdims=True) for matrix in nabla_b]
+
+        # Add L2 regularization gradient to weights
+        if self.l2_lambda > 0:
+            batch_size = output.shape[1]
+            for i in range(len(nabla_w)):
+                nabla_w[i] += (self.l2_lambda / batch_size) * self.weights[i]
+
+        return nabla_w, nabla_b
 
 
 def softmax(Z):
@@ -194,12 +267,35 @@ def softmax_dLdZ(output, target):
     return output - target
 
 
-def cross_entropy(y_true, y_pred, epsilon=1e-12):
+def cross_entropy(y_true, y_pred, epsilon=1e-12, weights=None, l2_lambda=0.0):
+    """
+    Compute cross entropy loss with optional L2 regularization.
+
+    Args:
+        y_true: Ground truth labels
+        y_pred: Predicted probabilities
+        epsilon: Small constant for numerical stability
+        weights: List of weight matrices for L2 regularization
+        l2_lambda: L2 regularization parameter
+
+    Returns:
+        Total loss (cross entropy + L2 regularization if weights provided)
+    """
     targets = y_true.transpose()
     predictions = y_pred.transpose()
     predictions = np.clip(predictions, epsilon, 1.0 - epsilon)
     N = predictions.shape[0]
-    ce = -np.sum(targets * np.log(predictions + 1e-9)) / N
+
+    # Calculate cross entropy loss
+    ce = -np.sum(targets * np.log(predictions + epsilon)) / N
+
+    # Add L2 regularization term if weights are provided
+    if weights is not None and l2_lambda > 0:
+        l2_loss = 0.0
+        for w in weights:
+            l2_loss += np.sum(np.square(w))
+        ce += 0.5 * l2_lambda * l2_loss / N
+
     return ce
 
 

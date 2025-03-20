@@ -27,9 +27,51 @@ def main():
     # [input, 100, 100, 10] - there are 4 layers first is the input whatever val_size
     # second layer has 100 neurons, so does the third. The final layer has 10 neurons.
     # This is also the output layer.
-    net = Network([train_data.shape[0], 100, 100, 10], optimizer="sgd")
-    net.train(train_data, train_class, val_data, val_class, 20, 64, 0.01)
-    net.eval_network(test_data, test_class)
+
+    # task one:
+    # optimizers = ["adam", "sgd"]
+    # learning_rates = [0.001, 0.0001, 0.00001]  # 0.1, 0.2, 0.5, 0.8]
+    # for optimizer in optimizers:
+    #     print(f"{optimizer} optimizer tests: \n \n")
+    #     for learning_rate in learning_rates:
+    #         net = Network(
+    #             sizes=[train_data.shape[0], 100, 100, 10], optimizer=optimizer
+    #         )
+    #         net.train(
+    #             train_data,
+    #             train_class,
+    #             val_data,
+    #             val_class,
+    #             epochs=20,
+    #             mini_batch_size=64,
+    #             eta=learning_rate,
+    #             # decay_rate=0.1,
+    #         )
+    #         valtidation_loss, classification_accuracy = net.eval_network(
+    #             test_data, test_class
+    #         )
+    #         print(f"Learning rate: {learning_rate}")
+    #         print("Validation Loss:" + str(valtidation_loss))
+    #         print("Classification accuracy: " + str(classification_accuracy))
+    #         print()
+    l2_lambda = 0.1
+    net = Network(
+        sizes=[train_data.shape[0], 100, 100, 10], optimizer="sgd", l2_lambda=l2_lambda
+    )
+
+    # task 2
+    net.train(
+        train_data,
+        train_class,
+        val_data,
+        val_class,
+        epochs=20,
+        mini_batch_size=64,
+        eta=0.005,
+        # decay_rate=0.1,
+    )
+    _, _ = net.eval_network(test_data, test_class)
+    print(f"for l2_lambda = {l2_lambda}")
 
 
 if __name__ == "__main__":
