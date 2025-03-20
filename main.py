@@ -1,4 +1,5 @@
 from network_template import Network, load_data_cifar
+from datetime import datetime
 
 
 def main():
@@ -54,24 +55,130 @@ def main():
     #         print("Validation Loss:" + str(valtidation_loss))
     #         print("Classification accuracy: " + str(classification_accuracy))
     #         print()
-    l2_lambda = 0.1
-    net = Network(
-        sizes=[train_data.shape[0], 100, 100, 10], optimizer="sgd", l2_lambda=l2_lambda
-    )
 
     # task 2
+    # l2_lambdas = [0.001, 0.005, 0.01, 0.1]
+
+    # for l2_lambda in l2_lambdas:
+    #     net = Network(
+    #         sizes=[train_data.shape[0], 100, 100, 10],
+    #         optimizer="sgd",
+    #         l2_lambda=l2_lambda,
+    #     )
+
+    #     print()
+    #     print(f"For l2_lambda = {l2_lambda}")
+    #     # task 2
+    #     net.train(
+    #         train_data,
+    #         train_class,
+    #         val_data,
+    #         val_class,
+    #         epochs=20,
+    #         mini_batch_size=64,
+    #         eta=0.005,
+    #         # decay_rate=0.1,
+    #     )
+    #     _, _ = net.eval_network(test_data, test_class)
+
+    # # 3rd final task
+    # decay_rates = [0, 0.001, 0.005, 0.01, 0.1, 0.3, 0.5]
+    # for decay_rate in decay_rates:
+    #     net = Network(sizes=[train_data.shape[0], 100, 100, 10], optimizer="sgd")
+    #     net.train(
+    #         train_data,
+    #         train_class,
+    #         val_data,
+    #         val_class,
+    #         epochs=20,
+    #         mini_batch_size=64,
+    #         eta=0.005,
+    #         decay_rate=decay_rate,
+    #     )
+    #     valtidation_loss, classification_accuracy = net.eval_network(
+    #         test_data, test_class
+    #     )
+
+    #     if decay_rate == 0:
+    #         print("Without decay rate:")
+    #     else:
+    #         print("Decday rate:" + str(decay_rate))
+    #     print("Validation Loss:" + str(valtidation_loss))
+    #     print("Classification accuracy: " + str(classification_accuracy))
+    #     print()
+
+    # New configuration with all parameters defined as variables
+    # Network parameters
+    network_params = {
+        'sizes': [train_data.shape[0], 100, 100, 10],  # Default architecture
+        'optimizer': "sgd",  # Default optimizer
+        'l2_lambda': 0.0,  # Default L2 regularization
+        'beta1': 0.9,  # Default Adam beta1
+        'beta2': 0.99,  # Default Adam beta2
+    }
+
+    # Training parameters
+    training_params = {
+        'epochs': 20,  # Default epochs
+        'mini_batch_size': 64,  # Default batch size
+        'eta': 0.005,  # Default learning rate
+        'decay_rate': 0.0,  # Default decay rate
+    }
+
+    # Create and train the network
+    net = Network(**network_params)
+    
+    # Print network specifications
+    print("\nNetwork Specifications:")
+    print("-" * 50)
+    for param, value in network_params.items():
+        print(f"{param}: {value}")
+    print("\nTraining Parameters:")
+    print("-" * 50)
+    for param, value in training_params.items():
+        print(f"{param}: {value}")
+    print("-" * 50)
+
+    # Train the network
     net.train(
         train_data,
         train_class,
         val_data,
         val_class,
-        epochs=20,
-        mini_batch_size=64,
-        eta=0.005,
-        # decay_rate=0.1,
+        **training_params
     )
-    _, _ = net.eval_network(test_data, test_class)
-    print(f"for l2_lambda = {l2_lambda}")
+
+    # Evaluate the network
+    validation_loss, classification_accuracy = net.eval_network(test_data, test_class)
+
+    # Print results
+    print("\nResults:")
+    print("-" * 50)
+    print(f"Validation Loss: {validation_loss}")
+    print(f"Classification Accuracy: {classification_accuracy}")
+    print("-" * 50)
+
+    # Write results to file
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open("results.txt", "a") as f:
+        f.write("\n" + "=" * 80 + "\n")
+        f.write(f"Run Date: {timestamp}\n\n")
+        
+        f.write("Network Specifications:\n")
+        f.write("-" * 50 + "\n")
+        for param, value in network_params.items():
+            f.write(f"{param}: {value}\n")
+        
+        f.write("\nTraining Parameters:\n")
+        f.write("-" * 50 + "\n")
+        for param, value in training_params.items():
+            f.write(f"{param}: {value}\n")
+        
+        f.write("\nResults:\n")
+        f.write("-" * 50 + "\n")
+        f.write(f"Validation Loss: {validation_loss}\n")
+        f.write(f"Classification Accuracy: {classification_accuracy}\n")
+        f.write("=" * 80 + "\n")
 
 
 if __name__ == "__main__":
