@@ -110,24 +110,24 @@ def main():
     # New configuration with all parameters defined as variables
     # Network parameters
     network_params = {
-        'sizes': [train_data.shape[0], 100, 100, 10],  # Default architecture
-        'optimizer': "sgd",  # Default optimizer
-        'l2_lambda': 0.0,  # Default L2 regularization
-        'beta1': 0.9,  # Default Adam beta1
-        'beta2': 0.99,  # Default Adam beta2
+        "sizes": [train_data.shape[0], 50, 50, 10],  # Default architecture
+        "optimizer": "adam",  # Default optimizer
+        "l2_lambda": 0.02,  # Default L2 regularization
+        "beta1": 0.9,  # Default Adam beta1
+        "beta2": 0.99,  # Default Adam beta2
     }
 
     # Training parameters
     training_params = {
-        'epochs': 20,  # Default epochs
-        'mini_batch_size': 64,  # Default batch size
-        'eta': 0.005,  # Default learning rate
-        'decay_rate': 0.0,  # Default decay rate
+        "epochs": 20,  # Default epochs
+        "mini_batch_size": 64,  # Default batch size
+        "eta": 0.001,  # Default learning rate
+        "decay_rate": 0.1,  # Default decay rate
     }
 
     # Create and train the network
     net = Network(**network_params)
-    
+
     # Print network specifications
     print("\nNetwork Specifications:")
     print("-" * 50)
@@ -140,13 +140,7 @@ def main():
     print("-" * 50)
 
     # Train the network
-    net.train(
-        train_data,
-        train_class,
-        val_data,
-        val_class,
-        **training_params
-    )
+    net.train(train_data, train_class, val_data, val_class, **training_params)
 
     # Evaluate the network
     validation_loss, classification_accuracy = net.eval_network(test_data, test_class)
@@ -163,17 +157,17 @@ def main():
     with open("results.txt", "a") as f:
         f.write("\n" + "=" * 80 + "\n")
         f.write(f"Run Date: {timestamp}\n\n")
-        
+
         f.write("Network Specifications:\n")
         f.write("-" * 50 + "\n")
         for param, value in network_params.items():
             f.write(f"{param}: {value}\n")
-        
+
         f.write("\nTraining Parameters:\n")
         f.write("-" * 50 + "\n")
         for param, value in training_params.items():
             f.write(f"{param}: {value}\n")
-        
+
         f.write("\nResults:\n")
         f.write("-" * 50 + "\n")
         f.write(f"Validation Loss: {validation_loss}\n")
